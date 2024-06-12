@@ -146,15 +146,27 @@ class _StepRecord:
             self.mark_running()
             ladapter = ScriptAdapterFactory.get_adapter("local")()
             srecord = ladapter.submit(
-                self.step, script, self.workspace.value)
+                [self.step], [script], self.workspace.value)
 
         if isinstance(srecord, tuple):
             retcode = srecord.submission_code
             jobid = srecord.job_identifier
         else:
-            jobid = srecord.get_id()
-            LOGGER.info(f"GOT {jobid}")
-            retcode = SubmissionCode.OK
+
+            LOGGER.info(f"GOT {srecord}")
+            for x in srecord:
+                LOGGER.info(f"GOT x= {x}")
+                jobid = x
+                retcode = SubmissionCode.OK
+
+
+            # srecord.get()
+            # LOGGER.info(f"GOT is_ready={srecord.is_ready()}")
+            # jobid = srecord.get_id()
+            # LOGGER.info(f"GOT {srecord} ({type(srecord)}) {dir(srecord)} is_ready={srecord.is_ready()}")
+            # jobidf58 = str(jobid.f58plain)
+            # LOGGER.info(f"GOT {jobid} ({type(jobid)}) {jobidf58} ({type(jobidf58)}) {jobid.dec}")
+            # retcode = SubmissionCode.OK
 
         return retcode, jobid
 

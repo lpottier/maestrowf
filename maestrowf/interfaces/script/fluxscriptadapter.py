@@ -74,7 +74,8 @@ class FluxScriptAdapter(SchedulerScriptAdapter):
             uri = os.environ.get("FLUX_URI", None)
             if uri:
                 LOGGER.info(f"Found FLUX_URI in environment, scheduling jobs to broker uri {uri}")
-            LOGGER.info(f"No FLUX_URI; scheduling standalone batch job to root instance")
+            else:
+                LOGGER.info(f"No FLUX_URI; scheduling standalone batch job to root instance")
         else:
             LOGGER.info(f"Using FLUX_URI found in study specification: {uri}")
         # if not uri:

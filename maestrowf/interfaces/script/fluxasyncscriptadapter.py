@@ -185,12 +185,12 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         return self._interface.parallelize(
             procs, nodes=ntasks, addtl_args=self._addl_args, **kwargs)
 
-    def submit(self, step, path, cwd, job_map=None, env=None):
+    def submit(self, steps, paths, cwd, job_map=None, env=None):
         """
         Submit a script to the Flux scheduler.
 
-        :param step: The StudyStep instance this submission is based on.
-        :param path: Local path to the script to be executed.
+        :param steps: A collection of StudyStep instance this submission is based on.
+        :param paths: A coolection of Local path to the script to be executed.
         :param cwd: Path to the current working directory.
         :param job_map: A dictionary mapping step names to their job
                         identifiers.
@@ -198,69 +198,85 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         :returns: The return status of the submission command and job
                   identiifer.
         """
-        nodes = step.run.get("nodes", 1)
-        processors = step.run.get("procs", 0)
 
-        if not isinstance(nodes, int):
-            if not nodes:
-                nodes = 1
-            else:
-                nodes = int(nodes)
+        if not isinstance(steps,list):
+            steps = [steps]
 
-        if not isinstance(processors, int):
-            if not processors:
-                processors = 1
-            else:
-                processors = int(processors)
-                
-        force_broker = step.run.get("nested", False)
-        walltime = \
-            self._convert_walltime_to_seconds(step.run.get("walltime", 0))
-        urgency = step.run.get("priority", "medium")
-        urgency = self.get_priority(urgency)
+        if not isinstance(paths,list):
+            paths = [paths]
 
-        # Compute cores per task
-        cores_per_task = step.run.get("cores per task", None)
-        if isinstance(cores_per_task, str):
+        jobspec = []
+        waitables = []
+        urgencies = []
+        for step, path in zip(steps, paths):
+            nodes = step.run.get("nodes", 1)
+            processors = step.run.get("procs", 0)
+
+            if not isinstance(nodes, int):
+                if not nodes:
+                    nodes = 1
+                else:
+                    nodes = int(nodes)
+
+            if not isinstance(processors, int):
+                if not processors:
+                    processors = 1
+                else:
+                    processors = int(processors)
+                    
+            force_broker = step.run.get("nested", False)
+            walltime = \
+                self._convert_walltime_to_seconds(step.run.get("walltime", 0))
+            urgency = step.run.get("priority", "medium")
+            urgency = self.get_priority(urgency)
+
+            # Compute cores per task
+            cores_per_task = step.run.get("cores per task", None)
+            if isinstance(cores_per_task, str):
+                try:
+                    cores_per_task = int(cores_per_task)
+                except:
+                    cores_per_task = 1
+            if not cores_per_task:
+                cores_per_task = 1 # max((1, ceil(processors / nodes)))
+                LOGGER.warn(
+                    "'cores per task' set to a non-value. Populating with a "
+                    "sensible default. (cores per task = %d", cores_per_task)
+
             try:
-                cores_per_task = int(cores_per_task)
-            except:
-                cores_per_task = 1
-        if not cores_per_task:
-            cores_per_task = 1 # max((1, ceil(processors / nodes)))
-            LOGGER.warn(
-                "'cores per task' set to a non-value. Populating with a "
-                "sensible default. (cores per task = %d", cores_per_task)
+                # Calculate ngpus
+                ngpus = step.run.get("gpus", "0")
+                ngpus = int(ngpus) if ngpus else 0
+            except ValueError as val_error:
+                msg = f"Specified gpus '{ngpus}' is not a decimal value."
+                LOGGER.error(msg)
+                raise val_error
 
-        try:
-            # Calculate ngpus
-            ngpus = step.run.get("gpus", "0")
-            ngpus = int(ngpus) if ngpus else 0
-        except ValueError as val_error:
-            msg = f"Specified gpus '{ngpus}' is not a decimal value."
-            LOGGER.error(msg)
-            raise val_error
+            # Calculate nprocs
+            ncores = cores_per_task * nodes
+            # Raise an exception if ncores is 0
+            if ncores <= 0:
+                msg = "Invalid number of cores specified. " \
+                    "Aborting. (ncores = {})".format(ncores)
+                LOGGER.error(msg)
+                raise ValueError(msg)
 
-        # Calculate nprocs
-        ncores = cores_per_task * nodes
-        # Raise an exception if ncores is 0
-        if ncores <= 0:
-            msg = "Invalid number of cores specified. " \
-                "Aborting. (ncores = {})".format(ncores)
-            LOGGER.error(msg)
-            raise ValueError(msg)
+            # Unpack waitable flag and pass it along if there: only pass it along if
+            # it's in the step maybe, leaving each adapter to retain their defaults?
+            waitable = step.run.get("waitable", False)
 
-        # Unpack waitable flag and pass it along if there: only pass it along if
-        # it's in the step maybe, leaving each adapter to retain their defaults?
-        waitable = step.run.get("waitable", False)
-        ftr = self._interface.submit(
-                nodes, processors, cores_per_task, path, cwd, walltime, ngpus,
-                job_name=step.name, force_broker=force_broker, urgency=urgency,
-                waitable=waitable
+            jobspec.append(self._interface.get_jobspec(
+                    nodes, processors, cores_per_task, path, cwd, walltime, ngpus,
+                    job_name=step.name, force_broker=force_broker, urgency=urgency,
+                    waitable=waitable
+                )
             )
+            urgencies.append(urgency)
+            waitables.append(waitable)
 
+        return self._interface.submit(jobspec, urgencies, waitables)
         # Return a concurrent.futures
-        return ftr
+        # return ftr
 
     def check_jobs(self, joblist):
         """
