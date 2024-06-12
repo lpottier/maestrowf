@@ -274,7 +274,7 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
             urgencies.append(urgency)
             waitables.append(waitable)
 
-        return self._interface.submit(jobspec, urgencies, waitables)
+        yield from self._interface.submit(jobspec, urgencies, waitables)
         # Return a concurrent.futures
         # return ftr
 
