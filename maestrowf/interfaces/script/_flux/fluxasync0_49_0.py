@@ -204,33 +204,15 @@ class FluxInterfaceAsync_0490(FluxInterface_0490):
         urgencies,
         waitables
     ):
-        # try:
-        #     cls.connect_to_flux()
-        #     LOGGER.debug("Handle address -- %s", hex(id(cls.flux_handle)))
-
+        cls.connect_to_flux()
         # Submit our job spec.
         with flux.job.FluxExecutor() as executor:
             futs = [executor.submit(jobspec, waitable=waitable, urgency=urgency) for jobspec, waitable, urgency in zip(jobpsecs, waitables, urgencies)]
-            for f in concurrent.futures.as_completed(futs):
-                # LOGGER.info(f"executor got : {f.jobid()}")
-                yield str(f.jobid().f58plain)
+            for f in futs:
+                jobid = f.jobid()
+                job_meta = flux.job.get_job(cls.flux_handle, jobid)
+                yield str(jobid.f58plain), job_meta["name"]
 
-        # except ConnectionResetError as exception:
-        #     LOGGER.error("Submission failed -- Message (%s).",
-        #                  exception,
-        #                  exc_info=True)
-        #     jobid = -1
-        #     retcode = -2
-        #     submit_status = SubmissionCode.ERROR
-        #     return jobid, retcode, submit_status
-        # except Exception as exception:
-        #     LOGGER.error("Submission failed -- Message (%s).",
-        #                  exception,
-        #                  exc_info=True)
-        #     jobid = -1
-        #     retcode = -1
-        #     submit_status = SubmissionCode.ERROR
-        #     return jobid, retcode, submit_status
 
     @classmethod
     def get_statuses(cls, joblist):
