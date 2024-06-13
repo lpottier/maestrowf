@@ -299,7 +299,7 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
             waitables.append(waitable)
 
         LOGGER.debug(f"Scheduling {n} jobs async")
-        yield from self._interface.submit(jobspec, urgencies, waitables)
+        yield from self._interface.submit(self.executor, jobspec, urgencies, waitables)
 
         # self.mp_queue.put([jobspec, urgencies, waitables])
         # res = self._interface.submit(self.executor, jobspec, urgencies, waitables)
