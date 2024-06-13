@@ -205,6 +205,8 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         if not isinstance(paths,list):
             paths = [paths]
 
+        n = len(steps)
+
         jobspec = []
         waitables = []
         urgencies = []
@@ -274,9 +276,11 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
             urgencies.append(urgency)
             waitables.append(waitable)
 
+        LOGGER.debug(f"Scheduling {n} jobs async")
         yield from self._interface.submit(jobspec, urgencies, waitables)
-        # Return a concurrent.futures
-        # return ftr
+        # res = self._interface.submit(jobspec, urgencies, waitables)
+        # LOGGER.info(f"Scheduled {n} jobs")
+        # return res
 
     def check_jobs(self, joblist):
         """
