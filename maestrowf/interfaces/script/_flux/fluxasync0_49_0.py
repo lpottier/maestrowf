@@ -37,6 +37,7 @@ except ImportError:
 class FluxInterfaceAsync_0490(FluxInterface_0490):
     # This utility class is for Flux 0.49.0
     key = "0.49.0-async"
+    # executor = flux.job.FluxExecutor()
 
     # @classmethod
     # def submit(
@@ -197,9 +198,11 @@ class FluxInterfaceAsync_0490(FluxInterface_0490):
 
         return jobspec
 
+
     @classmethod
     def submit(
         cls,
+        executor,
         jobpsecs,
         urgencies,
         waitables
@@ -207,10 +210,10 @@ class FluxInterfaceAsync_0490(FluxInterface_0490):
         cls.connect_to_flux()
         # Submit our job spec.
         res = []
-        executor = flux.job.FluxExecutor()
+        # executor = flux.job.FluxExecutor()
         futs = [executor.submit(jobspec, waitable=waitable, urgency=urgency) for jobspec, waitable, urgency in zip(jobpsecs, waitables, urgencies)]
         # we shutdown without waiting for future so we can get ASAP their JobID
-        executor.shutdown(wait=False, cancel_futures=False)
+        # executor.shutdown(wait=False, cancel_futures=False)
         for f in futs:
             LOGGER.debug(f"Waiting for {f} {f._state}")
             jobid = f.jobid()
@@ -222,34 +225,34 @@ class FluxInterfaceAsync_0490(FluxInterface_0490):
         LOGGER.debug(f"Returning after {len(futs)} jobs got scheduled")
         return res
 
-    @classmethod
-    def get_statuses(cls, joblist):
-        # We need to import flux here, as it may not be installed on
-        # all systems.
-        cls.connect_to_flux()
+    # @classmethod
+    # def get_statuses(cls, joblist):
+    #     # We need to import flux here, as it may not be installed on
+    #     # all systems.
+    #     cls.connect_to_flux()
 
-        LOGGER.debug("Flux handle address -- %s", hex(id(cls.flux_handle)))
+    #     LOGGER.debug("Flux handle address -- %s", hex(id(cls.flux_handle)))
 
-        # Reconstruct JobID instances from the str form of the Base58 id:
-        # NOTE: cannot pickle JobID instances, so must store as strings and
-        # reconstruct for use
-        jobs_rpc = flux.job.list.JobList(
-            cls.flux_handle,
-            ids=[flux.job.JobID(jid) for jid in joblist])
+    #     # Reconstruct JobID instances from the str form of the Base58 id:
+    #     # NOTE: cannot pickle JobID instances, so must store as strings and
+    #     # reconstruct for use
+    #     jobs_rpc = flux.job.list.JobList(
+    #         cls.flux_handle,
+    #         ids=[flux.job.JobID(jid) for jid in joblist])
 
-        statuses = {}
-        for jobinfo in jobs_rpc.jobs():
-            LOGGER.debug(f"Checking status of job with id {str(jobinfo.id.f58)}")
-            statuses[str(jobinfo.id.f58)] = cls.state(jobinfo.status_abbrev)
+    #     statuses = {}
+    #     for jobinfo in jobs_rpc.jobs():
+    #         LOGGER.debug(f"Checking status of job with id {str(jobinfo.id.f58)}")
+    #         statuses[str(jobinfo.id.f58)] = cls.state(jobinfo.status_abbrev)
 
-        chk_status = JobStatusCode.OK
-        #  Print all errors accumulated in JobList RPC:
-        try:
-            for err in jobs_rpc.errors:
-                chk_status = JobStatusCode.ERROR
-                LOGGER.error("Error in JobList RPC %s", err)
-        except EnvironmentError:
-            pass
+    #     chk_status = JobStatusCode.OK
+    #     #  Print all errors accumulated in JobList RPC:
+    #     try:
+    #         for err in jobs_rpc.errors:
+    #             chk_status = JobStatusCode.ERROR
+    #             LOGGER.error("Error in JobList RPC %s", err)
+    #     except EnvironmentError:
+    #         pass
 
-        return chk_status, statuses
+    #     return chk_status, statuses
 

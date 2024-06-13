@@ -39,10 +39,25 @@ from maestrowf.interfaces.script import CancellationRecord, SubmissionRecord, \
     FluxFactory
 # from maestrowf.interfaces.script.fluxscriptadapter import FluxScriptAdapter
 
+# from multiprocessing import Process, Queue
+
 LOGGER = logging.getLogger(__name__)
 status_re = re.compile(r"Job \d+ status: (.*)$")
 # env_filter = re.compile(r"^(SSH_|LSF)")
 env_filter = re.compile(r"^SSH_")
+
+# def do_thing(item):
+#     jobspec, urgencies, waitables = item.get()  # Get data queued by the parent process
+#     _version = kwargs.pop("version", FluxFactory.latest)
+#     _interface = FluxFactory.get_interface(_version)
+    
+#     LOGGER.info(f"jobspec   = {jobspec}")
+
+try:
+    import flux
+except ImportError:
+    LOGGER.info("Failed to import Flux. Continuing.")
+
 
 class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
     """Interface class for the flux scheduler (on Spectrum MPI)."""
@@ -68,6 +83,9 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         """
         super(FluxAsyncScriptAdapter, self).__init__(**kwargs)
 
+        # self.mp_queue = Queue()
+        # self.flux_executor = Process(target=do_thing, args=(self.mp_queue,))
+        # flux_executor.start()
         
         uri = kwargs.pop("uri", None)
         if not uri:             # Check if flux uri env var is set, log if so
@@ -115,6 +133,8 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         # the adaptor/broker versions along with the raw string we get back
         # from flux.
         self._broker_version = self._interface.get_flux_version()
+
+        self.executor = flux.job.FluxExecutor()
 
     @property
     def extension(self):
@@ -280,9 +300,15 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
 
         LOGGER.debug(f"Scheduling {n} jobs async")
         # yield from self._interface.submit(jobspec, urgencies, waitables)
-        res = self._interface.submit(jobspec, urgencies, waitables)
+
+        # self.mp_queue.put([jobspec, urgencies, waitables])
+        res = self._interface.submit(self.executor, jobspec, urgencies, waitables)
         LOGGER.info(f"Scheduled {n} jobs")
         return res
+
+    def __del__(self):
+        LOGGER.info(f"Wait for all futures")
+        self.executor.shutdown(wait=False, cancel_futures=False)
 
     def check_jobs(self, joblist):
         """
