@@ -299,16 +299,16 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
             waitables.append(waitable)
 
         LOGGER.debug(f"Scheduling {n} jobs async")
-        # yield from self._interface.submit(jobspec, urgencies, waitables)
+        yield from self._interface.submit(jobspec, urgencies, waitables)
 
         # self.mp_queue.put([jobspec, urgencies, waitables])
-        res = self._interface.submit(self.executor, jobspec, urgencies, waitables)
-        LOGGER.info(f"Scheduled {n} jobs")
-        return res
+        # res = self._interface.submit(self.executor, jobspec, urgencies, waitables)
+        # LOGGER.info(f"Scheduled {n} jobs")
+        # return res
 
     def __del__(self):
-        LOGGER.info(f"Wait for all futures")
-        self.executor.shutdown(wait=False, cancel_futures=False)
+        LOGGER.debug(f"Wait for all futures")
+        self.executor.shutdown(wait=True, cancel_futures=False)
 
     def check_jobs(self, joblist):
         """
