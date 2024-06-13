@@ -267,6 +267,8 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
             # it's in the step maybe, leaving each adapter to retain their defaults?
             waitable = step.run.get("waitable", False)
 
+            LOGGER.debug(f"Getting specs for {step.name} ({step})")
+
             jobspec.append(self._interface.get_jobspec(
                     nodes, processors, cores_per_task, path, cwd, walltime, ngpus,
                     job_name=step.name, force_broker=force_broker, urgency=urgency,
@@ -277,10 +279,10 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
             waitables.append(waitable)
 
         LOGGER.debug(f"Scheduling {n} jobs async")
-        yield from self._interface.submit(jobspec, urgencies, waitables)
-        # res = self._interface.submit(jobspec, urgencies, waitables)
-        # LOGGER.info(f"Scheduled {n} jobs")
-        # return res
+        # yield from self._interface.submit(jobspec, urgencies, waitables)
+        res = self._interface.submit(jobspec, urgencies, waitables)
+        LOGGER.info(f"Scheduled {n} jobs")
+        return res
 
     def check_jobs(self, joblist):
         """

@@ -216,11 +216,11 @@ class FluxInterfaceAsync_0490(FluxInterface_0490):
             jobid = f.jobid()
             job_meta = flux.job.get_job(cls.flux_handle, jobid)
             LOGGER.debug(f"Got step name => {jobid.f58plain} => {job_meta['name']}")
-            yield str(jobid.f58plain), job_meta["name"]
-            # res.append([str(jobid.f58plain), job_meta["name"]])
+            # yield str(jobid.f58plain), job_meta["name"]
+            res.append([str(jobid.f58plain), job_meta["name"]])
 
-        # LOGGER.debug(f"Returning after {len(futs)} jobs got scheduled")
-        # return res
+        LOGGER.debug(f"Returning after {len(futs)} jobs got scheduled")
+        return res
 
     @classmethod
     def get_statuses(cls, joblist):
