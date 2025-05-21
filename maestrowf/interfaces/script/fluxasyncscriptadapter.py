@@ -205,7 +205,7 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         return self._interface.parallelize(
             procs, nodes=ntasks, addtl_args=self._addl_args, **kwargs)
 
-    def submit(self, steps, paths, cwd, job_map=None, env=None):
+    def submit(self, steps, paths, cwds, job_map=None, env=None):
         """
         Submit a script to the Flux scheduler.
 
@@ -230,7 +230,7 @@ class FluxAsyncScriptAdapter(SchedulerScriptAdapter):
         jobspec = []
         waitables = []
         urgencies = []
-        for step, path in zip(steps, paths):
+        for step, path, cwd in zip(steps, paths, cwds):
             nodes = step.run.get("nodes", 1)
             processors = step.run.get("procs", 0)
 
