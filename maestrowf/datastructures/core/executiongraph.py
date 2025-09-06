@@ -121,7 +121,6 @@ class _StepRecord:
     def execute(self, adapter):
         self.mark_submitted()
         retcode, jobid = self._execute(adapter, self.script)
-
         if retcode == SubmissionCode.OK:
             self.jobid.append(jobid)
 
@@ -157,8 +156,16 @@ class _StepRecord:
             srecord = ladapter.submit(
                 self.step, script, self.workspace.value)
 
-        retcode = srecord.submission_code
-        jobid = srecord.job_identifier
+        if isinstance(srecord, tuple):
+            retcode = srecord.submission_code
+            jobid = srecord.job_identifier
+        else:
+            LOGGER.info(f"GOT {srecord}")
+            for x in srecord:
+                LOGGER.info(f"GOT x= {x}")
+                jobid = x
+                retcode = SubmissionCode.OK
+
         return retcode, jobid
 
     def mark_submitted(self):
